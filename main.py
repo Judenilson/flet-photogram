@@ -10,7 +10,7 @@ import send2trash
 version = 'v1.2'
 config_file = {'dir_path': '', 'width': 1280,
                'height': 800, 'top': 0, 'left': 0}
-thumb_config_file = dict()
+cover_config_file = dict()
 dir_photos = ''  # Diretório raiz do arquivo de imagens
 people_list = []
 image_list = dict()
@@ -84,12 +84,12 @@ def save_config():
 
 
 def save_thumb_config():
-    global thumb_config_file
+    global cover_config_file
 
     dir_main = os.path.join(config_file['dir_path'], 'thumbs_config.cfg')
     try:
         with open(dir_main, 'w') as file:
-            json.dump(thumb_config_file, file)
+            json.dump(cover_config_file, file)
     except Exception as e:
         log.error(
             f'Não foi possível salvar as configs de thumbs. Erro: {str(e)}')
@@ -98,7 +98,7 @@ def save_thumb_config():
 
 
 def read_thumbs_config():
-    global thumb_config_file
+    global cover_config_file
 
     dir_thumbs_config = os.path.join(
         config_file['dir_path'], 'thumbs_config.cfg')
@@ -106,7 +106,7 @@ def read_thumbs_config():
         save_thumb_config()
     try:
         with open(dir_thumbs_config, 'r') as file:
-            thumb_config_file = json.load(file)
+            cover_config_file = json.load(file)
         log.info('Configuração de capas carregada com sucesso.')
     except Exception as e:
         log.error(f'Configuração de capas NÃO carregada. Erro: {str(e)}')
@@ -177,11 +177,12 @@ def start(percent, page):
     global loading_ok
     dir_photos = config_file['dir_path']
 
+    # Colocando as pastas da raíz na lista people_list e como chave do dicionário de capas
     for folder in os.listdir(dir_photos):
         if os.path.isdir(dir_photos + '\\' + folder):
             people_list.append(folder)
-            if folder not in thumb_config_file:
-                thumb_config_file[folder] = ''
+            if folder not in cover_config_file:
+                cover_config_file[folder] = ''
 
     for folder in people_list:
         img_list = []
@@ -196,6 +197,7 @@ def start(percent, page):
                 directory_names[:] = [
                     d for d in directory_names if d not in dir_exclude]
 
+                position_control = '0'
                 for file_name in file_names:
                     dir_file = os.path.join(directory_path, file_name)
 
@@ -210,19 +212,26 @@ def start(percent, page):
                             log.error(
                                 f'Erro ao criar miniatrura. Erro: {str(e)}')
                         else:
-                            img_list.insert(0, dir_file)
+                            if file_name < position_control:
+                                img_list.append(dir_file)
+                            else:
+                                img_list.insert(0, dir_file)
 
                     else:
                         if os.path.isfile(dir_file):
-                            img_list.insert(0, dir_file)
+                            if file_name < position_control:
+                                img_list.append(dir_file)
+                            else:
+                                img_list.insert(0, dir_file)
+                    position_control = file_name
                     percent.value = dir_file
                     page.update()
 
         image_list[folder] = img_list
-        if thumb_config_file[folder] == '':
+        if cover_config_file[folder] == '':
             for i in img_list:
                 if i[-4:] == '.jpg':
-                    thumb_config_file[folder] = i
+                    cover_config_file[folder] = i
                     break
 
     loading_ok = True
@@ -408,22 +417,22 @@ def main(page: ft.Page):
         page.update()
 
     def change_cover_image(e):
-        global thumb_config_file
+        global cover_config_file
 
         people = e.control.data['people']
         img = e.control.data['img_dir']
 
         if img[-4:] != '.jpg':
-            thumb_config_file[people] = thumb_path(people, img)
+            cover_config_file[people] = thumb_path(people, img)
 
         else:
-            thumb_config_file[people] = img
+            cover_config_file[people] = img
 
         snack_bar_click('Capa modificada!', e)
 
         for i in page.views[0].controls[0].controls:
             if i.key == people:
-                i.content.controls[0].src = thumb_config_file[people]
+                i.content.controls[0].src = cover_config_file[people]
         page.update()
 
     for people in image_list:
@@ -434,7 +443,7 @@ def main(page: ft.Page):
                 content=ft.Stack(
                     [
                         ft.Image(
-                            src=thumb_config_file[people],
+                            src=cover_config_file[people],
                             fit=ft.ImageFit.COVER,
                             repeat=ft.ImageRepeat.NO_REPEAT,
                             border_radius=ft.border_radius.all(10),
@@ -524,12 +533,12 @@ def main(page: ft.Page):
         img = e.control.data[1]
 
         if is_video(img):
-            if thumb_config_file[people] == thumb_path(people, img):
+            if cover_config_file[people] == thumb_path(people, img):
                 snack_bar_click(
                     'Imagem da Capa, selecione outra antes de apagar!', e)
                 return False
 
-        if thumb_config_file[people] == img:
+        if cover_config_file[people] == img:
             snack_bar_click(
                 'Imagem da Capa, selecione outra antes de apagar!', e)
             return False
