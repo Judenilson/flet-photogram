@@ -197,7 +197,7 @@ def start(percent, page):
                 directory_names[:] = [
                     d for d in directory_names if d not in dir_exclude]
 
-                position_control = '0'
+                position_control = list()
                 for file_name in file_names:
                     dir_file = os.path.join(directory_path, file_name)
 
@@ -212,18 +212,24 @@ def start(percent, page):
                             log.error(
                                 f'Erro ao criar miniatrura. Erro: {str(e)}')
                         else:
-                            if file_name < position_control:
-                                img_list.append(dir_file)
+                            if len(position_control) == 0:
+                                    position_control.append(file_name)
                             else:
-                                img_list.insert(0, dir_file)
+                                for i in range (len(position_control)):
+                                    if file_name > position_control[i]:        
+                                        position_control.insert(i, file_name)
+                                        img_list.insert(i, dir_file)
+                                        break
 
                     else:
-                        if os.path.isfile(dir_file):
-                            if file_name < position_control:
-                                img_list.append(dir_file)
-                            else:
-                                img_list.insert(0, dir_file)
-                    position_control = file_name
+                        if len(position_control) == 0:
+                                position_control.append(file_name)
+                        else:
+                            for i in range (len(position_control)):
+                                if file_name > position_control[i]:        
+                                    position_control.insert(i, file_name)
+                                    img_list.insert(i, dir_file)
+                                    break
                     percent.value = dir_file
                     page.update()
 
