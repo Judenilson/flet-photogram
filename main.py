@@ -691,7 +691,7 @@ def main(page: ft.Page):
             gerador = generate_images(people)
             
         try:
-            for i in range(30):
+            for i in range(100):
                 grid_images.controls.append(next(gerador))
                 page.update()
         except Exception as e:
