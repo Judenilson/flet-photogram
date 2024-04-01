@@ -5,6 +5,7 @@ import logging
 import zipfile
 import os
 import send2trash
+import re
 
 
 version = 'v1.2'
@@ -171,6 +172,14 @@ def thumb_path(people, path):
         '\\.thumbs.videos' + path[file_name:] + '.video.jpg'
     return path_new
 
+def remove_special_characters(text):
+    # Define a expressão regular para encontrar caracteres especiais
+    pattern = r'[^a-zA-Z0-9]'  # Vai remover tudo exceto letras, números e espaços
+
+    # Substitui os caracteres especiais por uma string vazia
+    result = re.sub(pattern, '', text)
+    
+    return result
 
 def start(percent, page):
     global dir_photos
@@ -184,22 +193,23 @@ def start(percent, page):
             if folder not in cover_config_file:
                 cover_config_file[folder] = ''
 
-    for folder in people_list:
-        img_list = []
-        dir_folder = dir_photos + '\\' + folder
-        dir_thumbs = dir_folder + '\\.thumbs.videos'
+    for people in people_list:
+        img_list = dict()
+        dir_people = dir_photos + '\\' + people
+        dir_thumbs = dir_people + '\\.thumbs.videos'
 
         if not os.path.exists(dir_thumbs):
             os.makedirs(dir_thumbs)
 
-        if os.path.isdir(dir_folder):
-            for directory_path, directory_names, file_names in os.walk(dir_folder):
-                directory_names[:] = [
-                    d for d in directory_names if d not in dir_exclude]
+        if os.path.isdir(dir_people):
+            for directory_path, directory_names, file_names in os.walk(dir_people):
+                directory_names[:] = [d for d in directory_names if d not in dir_exclude]
 
-                position_control = list()
+
                 for file_name in file_names:
                     dir_file = os.path.join(directory_path, file_name)
+
+                    file_key = remove_special_characters(file_name)
 
                     if dir_file[-4:] == '.mp4' or dir_file[-4:] == 'mpeg':
                         video_input_path = dir_file
@@ -212,32 +222,22 @@ def start(percent, page):
                             log.error(
                                 f'Erro ao criar miniatrura. Erro: {str(e)}')
                         else:
-                            if len(position_control) == 0:
-                                    position_control.append(file_name)
-                            else:
-                                for i in range (len(position_control)):
-                                    if file_name > position_control[i]:        
-                                        position_control.insert(i, file_name)
-                                        img_list.insert(i, dir_file)
-                                        break
+                            img_list[file_key]=dir_file
 
                     else:
-                        if len(position_control) == 0:
-                                position_control.append(file_name)
-                        else:
-                            for i in range (len(position_control)):
-                                if file_name > position_control[i]:        
-                                    position_control.insert(i, file_name)
-                                    img_list.insert(i, dir_file)
-                                    break
+                        img_list[file_key]=dir_file
+
+
                     percent.value = dir_file
                     page.update()
-
-        image_list[folder] = img_list
-        if cover_config_file[folder] == '':
-            for i in img_list:
+                    
+        sort_for_key = dict(sorted(img_list.items(), reverse=True))
+        image_list[people] = sort_for_key
+        
+        if cover_config_file[people] == '':
+            for i in sort_for_key:
                 if i[-4:] == '.jpg':
-                    cover_config_file[folder] = i
+                    cover_config_file[people] = i
                     break
 
     loading_ok = True
@@ -537,6 +537,7 @@ def main(page: ft.Page):
         global grid_images
         people = e.control.data[0]
         img = e.control.data[1]
+        img_key = e.control.data[2]
 
         if is_video(img):
             if cover_config_file[people] == thumb_path(people, img):
@@ -567,7 +568,7 @@ def main(page: ft.Page):
                     else:
                         log.info(f'removendo thumb {isVideo}')
 
-            image_list[people].remove(img)
+            image_list[people].pop(img_key)
 
             for i in page.views[1].controls[0].controls:
                 if i.key == img:
@@ -575,8 +576,7 @@ def main(page: ft.Page):
 
             for i in page.views[0].controls[0].controls:
                 if i.key == people:
-                    i.content.controls[2].content.value = len(
-                        image_list[people])
+                    i.content.controls[2].content.value = len(image_list[people])
 
             # grid.scroll_to(offset=scroll_position)
             page.update()
@@ -662,7 +662,8 @@ def main(page: ft.Page):
             padding=ft.Padding(0,0,20,0),
         )
 
-        for dir_photo in image_list[people]:
+        for imagens in image_list[people]:
+            dir_photo = image_list[people][imagens]
             dir_thumb = dir_photo
 
             radius = 10
@@ -703,10 +704,15 @@ def main(page: ft.Page):
                                 on_long_press=change_cover_image
                             ),
                             ft.Container(
+                                content= ft.Text('H'),
+                                bottom=15,
+                                left=15,
+                            ),
+                            ft.Container(
                                 content=ft.IconButton(
                                     icon=ft.icons.DELETE_FOREVER_SHARP,
                                     on_click=del_imagem,
-                                    data=[people, dir_photo],
+                                    data=[people, dir_photo, imagens],
                                     width=40,
                                     style=ft.ButtonStyle(
                                         color={
