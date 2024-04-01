@@ -743,6 +743,11 @@ def main(page: ft.Page):
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
+    def exit_page(e: ft.KeyboardEvent):
+        if e.key == 'Escape' and len(page.views) > 1:
+            page.views.clear()
+            page.go('/')
+
     def loading_folder(e):
         page.dialog = config_folder_modal
         config_folder_modal.open = True
@@ -800,6 +805,7 @@ def main(page: ft.Page):
         top_view = page.views[-1]
         page.go(top_view.route)
 
+    page.on_keyboard_event = exit_page
     page.on_route_change = layout
     page.on_view_pop = view_pop
     page.go(page.route)
