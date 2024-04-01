@@ -6,5 +6,8 @@ flet build windows -vv --build-number '2' --build-version '1.2' main.py
 
 ## To implement
 - Use the ESC key to go back
-- scrool on demand, for photo view to become more fast.
-- Sort by date
+
+## Versions
+v1.4
+- Images On Demand
+- Sort By date All
