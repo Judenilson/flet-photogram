@@ -6,6 +6,7 @@ import zipfile
 import os
 import send2trash
 import re
+gerador = ''        
 
 
 version = 'v1.2'
@@ -17,10 +18,9 @@ people_list = []
 image_list = dict()
 loading_ok = False
 dir_exclude = ['.thumb.stogram', '.thumbs.videos']
-scroll_position = 0
-
+people_data = {'dir_thumb':'', 'dir_photo':'', 'radius':'', 'people':'', 'imagens':''}
+current_person = ''
 config_locate = os.path.join(os.path.expanduser('~'), 'photogram_configs.cfg')
-
 # ----------------------- SISTEMA DE LOG ---------------------------------------------
 # Cria um logger
 log = logging.getLogger('Log')
@@ -293,6 +293,7 @@ def config_screen(page: ft.page):
 
 
 def main(page: ft.Page):
+    global gerador
     page.title = 'Photogram ' + version
     page.window_width = config_file['width']
     page.window_height = config_file['height']
@@ -324,10 +325,6 @@ def main(page: ft.Page):
     progress = ft.ProgressBar(width=page.window_width, color=ft.colors.GREEN)
     texto = ft.Text("Carregando Miniaturas ...")
     percent = ft.Text("")
-
-    def on_column_scroll(e: ft.OnScrollEvent):
-        global scroll_position
-        scroll_position = e.pixels
 
     def close_app(e):
         ''' Fecha o Aplicativo '''
@@ -390,7 +387,7 @@ def main(page: ft.Page):
     progress.visible = False
     page.update()
 
-    grid = ft.GridView(
+    grid_master = ft.GridView(
         expand=1,
         runs_count=5,
         max_extent=220,
@@ -401,7 +398,7 @@ def main(page: ft.Page):
     )
     
 
-    page.add(grid)
+    page.add(grid_master)
 
     def open_imagem(e):
         img = e.control.data['img_dir']
@@ -414,7 +411,6 @@ def main(page: ft.Page):
 
     page.snack_bar = ft.SnackBar(
         content=ft.Text(""),
-        # action="Alright!",
     )
 
     def snack_bar_click(text, e):
@@ -444,7 +440,7 @@ def main(page: ft.Page):
     for people in image_list:
         images_count = len(image_list[people])
 
-        grid.controls.append(
+        grid_master.controls.append(
             ft.Container(
                 content=ft.Stack(
                     [
@@ -568,7 +564,7 @@ def main(page: ft.Page):
                     else:
                         log.info(f'removendo thumb {isVideo}')
 
-            image_list[people].pop(img_key)
+            image_list[people][img_key] = 'DELETED'
 
             for i in page.views[1].controls[0].controls:
                 if i.key == img:
@@ -576,168 +572,130 @@ def main(page: ft.Page):
 
             for i in page.views[0].controls[0].controls:
                 if i.key == people:
-                    i.content.controls[2].content.value = len(image_list[people])
+                    count = 0
+                    for j in image_list[people].values():
+                        if j != 'DELETED':
+                            count += 1
+                    i.content.controls[2].content.value = int(count)
 
-            # grid.scroll_to(offset=scroll_position)
             page.update()
         else:
             log.info(f"Arquivo inexistente {img}")
         return True
 
-    def image_container(dir_thumb, dir_photo, radius, people):
-        return ft.Container(
-                    content=ft.Stack(
-                        [
-                            ft.Image(
-                                src=dir_thumb,
-                                fit=ft.ImageFit.COVER,
-                                repeat=ft.ImageRepeat.NO_REPEAT,
-                                border_radius=ft.border_radius.all(radius),
-                                width=220,
-                                height=220,
-                            ),
-                            ft.Container(
-                                content=ft.IconButton(
-                                    icon=ft.icons.OPEN_IN_FULL,
-                                    data={'img_dir': dir_photo,
-                                        'people': people},
-                                    on_click=open_imagem,
-                                    width=40,
-                                    style=ft.ButtonStyle(
-                                        color=ft.colors.TRANSPARENT,
-                                        shape=ft.RoundedRectangleBorder(
-                                            radius=10),
-                                    ),
-                                ),
-                                width=220,
-                                height=220,
-                                data={'img_dir': dir_photo, 'people': people},
-                                on_long_press=change_cover_image
-                            ),
-                            ft.Container(
-                                content=ft.IconButton(
-                                    icon=ft.icons.DELETE_FOREVER_SHARP,
-                                    on_click=del_imagem,
-                                    data=[people, dir_photo],
-                                    width=40,
-                                    style=ft.ButtonStyle(
-                                        color={
-                                            ft.MaterialState.DEFAULT: ft.colors.WHITE,
-                                            ft.MaterialState.HOVERED: ft.colors.RED,
-                                        },
-                                        bgcolor={
-                                            ft.MaterialState.HOVERED: ft.colors.WHITE},
-                                        shape=ft.RoundedRectangleBorder(
-                                            radius=100),
-                                    ),
-                                ),
-                                bottom=5,
-                                right=5,
-                                width=40,
-                                height=40,
-                                visible=True,
-                            ),
-                        ],
-                    ),
-                    key=dir_photo,
-                ),
 
-    def people_images(people):
-        '''
-        Cria um grid com todas as imagens de acordo com a pessoa passada como parâmetro
+    def on_column_scroll(e: ft.OnScrollEvent):
+        if e.event_type == 'end' and e.pixels > (e.max_scroll_extent * 0.9):
+            people_images(current_person)
 
-        '''
-        progress.width = page.window_width
-        progress.visible = True
-        page.update()
 
-        grid = ft.GridView(
-            expand=1,
-            runs_count=5,
-            max_extent=220,
-            child_aspect_ratio=1.0,
-            spacing=10,
-            run_spacing=10,
-            on_scroll=on_column_scroll,
-            padding=ft.Padding(0,0,20,0),
-        )
-
+    def generate_images(people):
         for imagens in image_list[people]:
             dir_photo = image_list[people][imagens]
-            dir_thumb = dir_photo
+            if dir_photo != 'DELETED':
+                dir_thumb = dir_photo
 
-            radius = 10
-            if is_video(dir_photo):
-                radius = 100
-                dir_thumb = thumb_path(people, dir_photo)
+                radius = 10
+                if is_video(dir_photo):
+                    radius = 100
+                    dir_thumb = thumb_path(people, dir_photo)
 
-            # grid.controls.append(image_container(dir_thumb, dir_photo, radius, people))
+                people_data['dir_photo'] = dir_photo
+                dir_thumb = dir_thumb
+                imagens = imagens
+                people_data['people'] = people
+                radius = radius
 
-            grid.controls.append( 
-                ft.Container(
-                    content=ft.Stack(
-                        [
-                            ft.Image(
-                                src=dir_thumb,
-                                fit=ft.ImageFit.COVER,
-                                repeat=ft.ImageRepeat.NO_REPEAT,
-                                border_radius=ft.border_radius.all(radius),
-                                width=220,
-                                height=220,
-                            ),
-                            ft.Container(
-                                content=ft.IconButton(
-                                    icon=ft.icons.OPEN_IN_FULL,
-                                    data={'img_dir': dir_photo,
-                                          'people': people},
-                                    on_click=open_imagem,
-                                    width=40,
-                                    style=ft.ButtonStyle(
-                                        color=ft.colors.TRANSPARENT,
-                                        shape=ft.RoundedRectangleBorder(
-                                            radius=10),
-                                    ),
+                yield  ft.Container(
+                        content=ft.Stack(
+                            [
+                                ft.Image(
+                                    src=dir_thumb,
+                                    fit=ft.ImageFit.COVER,
+                                    repeat=ft.ImageRepeat.NO_REPEAT,
+                                    border_radius=ft.border_radius.all(radius),
+                                    width=220,
+                                    height=220,
                                 ),
-                                width=220,
-                                height=220,
-                                data={'img_dir': dir_photo, 'people': people},
-                                on_long_press=change_cover_image
-                            ),
-                            ft.Container(
-                                content= ft.Text('H'),
-                                bottom=15,
-                                left=15,
-                            ),
-                            ft.Container(
-                                content=ft.IconButton(
-                                    icon=ft.icons.DELETE_FOREVER_SHARP,
-                                    on_click=del_imagem,
-                                    data=[people, dir_photo, imagens],
-                                    width=40,
-                                    style=ft.ButtonStyle(
-                                        color={
-                                            ft.MaterialState.DEFAULT: ft.colors.WHITE,
-                                            ft.MaterialState.HOVERED: ft.colors.RED,
-                                        },
-                                        bgcolor={
-                                            ft.MaterialState.HOVERED: ft.colors.WHITE},
-                                        shape=ft.RoundedRectangleBorder(
-                                            radius=100),
+                                ft.Container(
+                                    content=ft.IconButton(
+                                        icon=ft.icons.OPEN_IN_FULL,
+                                        data={'img_dir': dir_photo,
+                                            'people': people},
+                                        on_click=open_imagem,
+                                        width=40,
+                                        style=ft.ButtonStyle(
+                                            color=ft.colors.TRANSPARENT,
+                                            shape=ft.RoundedRectangleBorder(
+                                                radius=10),
+                                        ),
                                     ),
+                                    width=220,
+                                    height=220,
+                                    data={'img_dir': dir_photo, 'people': people},
+                                    on_long_press=change_cover_image
                                 ),
-                                bottom=5,
-                                right=5,
-                                width=40,
-                                height=40,
-                                visible=True,
-                            ),
-                        ],
-                    ),
-                    key=dir_photo,
-                ),
-            )
+                                ft.Container(
+                                    content= ft.Text(imagens[:8], size=10, height=ft.FontWeight.BOLD),
+                                    bottom=5,
+                                    left=15,
+                                ),
+                                ft.Container(
+                                    content=ft.IconButton(
+                                        icon=ft.icons.DELETE_FOREVER_SHARP,
+                                        on_click=del_imagem,
+                                        data=[people, dir_photo, imagens],
+                                        width=40,
+                                        style=ft.ButtonStyle(
+                                            color={
+                                                ft.MaterialState.DEFAULT: ft.colors.WHITE,
+                                                ft.MaterialState.HOVERED: ft.colors.RED,
+                                            },
+                                            bgcolor={
+                                                ft.MaterialState.HOVERED: ft.colors.WHITE},
+                                            shape=ft.RoundedRectangleBorder(
+                                                radius=100),
+                                        ),
+                                    ),
+                                    bottom=5,
+                                    right=5,
+                                    width=40,
+                                    height=40,
+                                    visible=True,
+                                ),
+                            ],
+                        ),
+                        key=dir_photo,
+                    )
 
-        return grid
+    grid_images = ft.GridView(
+        expand=1,
+        runs_count=5,
+        max_extent=220,
+        child_aspect_ratio=1.0,
+        spacing=10,
+        run_spacing=10,
+        on_scroll=on_column_scroll,
+        padding=ft.Padding(0,0,20,0),
+    )
+
+    def people_images(people):
+        global gerador
+        global current_person
+
+        progress.width = page.window_width
+        progress.visible = True
+        
+        if people != current_person:
+            current_person = people
+            gerador = generate_images(people)
+            
+        try:
+            for i in range(30):
+                grid_images.controls.append(next(gerador))
+                page.update()
+        except Exception as e:
+            print(f"Fim das imagens. Erro: {str(e)}")
 
 # ----------------------------------------------------------------------------------------------------------------------------- ALTERANDO PASTA -------------
     def get_directory_result(e: ft.FilePickerResultEvent):
@@ -797,13 +755,16 @@ def main(page: ft.Page):
 # ----------------------------------------------------------------------------------------------------------------------------- ALTERANDO PASTA FIM -------------
 
     def layout(e):
+        global gerador
+        global current_person
+
         page.views.clear()
         appbar_default.title.content.content.value = 'Photogram ' + version
         page.views.append(
             ft.View(
                 '/',
                 [
-                    grid,
+                    grid_master,
                     progress,
                 ],
                 floating_action_button=floatingButton,
@@ -817,7 +778,10 @@ def main(page: ft.Page):
         if page.route in people_list:
 
             appbar_default.title.content.content.value += ' | ' + page.route
-            grid_images = people_images(page.route)
+            grid_images.controls.clear()            
+            current_person = page.route
+            gerador = generate_images(current_person)
+            people_images(page.route)
 
             page.views.append(
                 ft.View(
