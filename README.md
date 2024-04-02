@@ -2,7 +2,7 @@
 
 Photo view. To delete images and videos in easy mode.
 
-flet build windows -vv --build-number '2' --build-version '1.4' --project 'Photogram' --description 'Photo view. To delete images and videos in easy mode.' --product 'Photogram' --org 'br.com.judenilson' --company 'Judenilson Araujo'
+flet build windows -vv --build-number '4' --build-version '1.4.0' --project 'Photogram' --description 'Photo view. To delete images and videos in easy mode.' --product 'Photogram' --org 'br.com.judenilson' --company 'Judenilson Araujo' --copyright 'Judenilson Araujo'
 
 ## To implement
 - Nothing for now.
