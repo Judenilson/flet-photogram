@@ -596,7 +596,7 @@ def main(page: ft.Page):
 
         if e.event_type == 'end' and e.pixels >= e.max_scroll_extent and flag:
             flag = False
-            people_images(current_person)        
+            people_images(current_person, round(thumbs_qt()/3))        
 
 
     def generate_images(people):
@@ -689,7 +689,7 @@ def main(page: ft.Page):
         padding=ft.Padding(0,0,20,0),
     )
 
-    def people_images(people):
+    def people_images(people, qtt_images):
         global gerador
         global current_person
         global flag
@@ -702,7 +702,7 @@ def main(page: ft.Page):
             gerador = generate_images(people)
             
         try:
-            for i in range(thumbs_qt()):
+            for i in range(qtt_images):
                 grid_images.controls.append(next(gerador))
                 page.update()
             flag = True
@@ -800,7 +800,7 @@ def main(page: ft.Page):
             grid_images.controls.clear()            
             current_person = page.route
             gerador = generate_images(current_person)
-            people_images(page.route)
+            people_images(page.route, thumbs_qt())
 
             page.views.append(
                 ft.View(
