@@ -10,7 +10,7 @@ import time
 gerador = ''        
 
 
-version = 'v1.2'
+version = 'v1.4'
 config_file = {'dir_path': '', 'width': 1280,
                'height': 800, 'top': 0, 'left': 0}
 cover_config_file = dict()

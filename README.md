@@ -2,7 +2,7 @@
 
 Photo view. To delete images and videos in easy mode.
 
-flet build windows -vv --build-number '2' --build-version '1.2' main.py
+flet build windows -vv --build-number '2' --build-version '1.4' main.py
 
 ## To implement
 - Nothing for now.
