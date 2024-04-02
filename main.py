@@ -305,6 +305,9 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.window_title_bar_hidden = True
 
+    def thumbs_qt():
+        return round(((page.window_width * page.window_height) / 38416) + 5)
+
     page.theme = ft.Theme(
         scrollbar_theme=ft.ScrollbarTheme(
             track_color={
@@ -699,12 +702,12 @@ def main(page: ft.Page):
             gerador = generate_images(people)
             
         try:
-            for i in range(100):
+            for i in range(thumbs_qt()):
                 grid_images.controls.append(next(gerador))
                 page.update()
             flag = True
         except Exception as e:
-            print(f"Fim das imagens. Erro: {str(e)}")
+            print(f"Fim das imagens. {str(e)}")
             flag = True
 
 

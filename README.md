@@ -12,3 +12,4 @@ v1.4
 - Images On Demand
 - Sort By date All
 - Add Escape to go back 
+- Loading Images with quantity dynamic 
