@@ -6,6 +6,7 @@ import zipfile
 import os
 import send2trash
 import re
+import time
 gerador = ''        
 
 
@@ -21,6 +22,8 @@ dir_exclude = ['.thumb.stogram', '.thumbs.videos']
 people_data = {'dir_thumb':'', 'dir_photo':'', 'radius':'', 'people':'', 'imagens':''}
 current_person = ''
 config_locate = os.path.join(os.path.expanduser('~'), 'photogram_configs.cfg')
+flag = True
+
 # ----------------------- SISTEMA DE LOG ---------------------------------------------
 # Cria um logger
 log = logging.getLogger('Log')
@@ -584,9 +587,13 @@ def main(page: ft.Page):
         return True
 
 
+
     def on_column_scroll(e: ft.OnScrollEvent):
-        if e.event_type == 'end' and e.pixels > (e.max_scroll_extent * 0.9):
-            people_images(current_person)
+        global flag
+
+        if e.event_type == 'end' and e.pixels >= e.max_scroll_extent and flag:
+            flag = False
+            people_images(current_person)        
 
 
     def generate_images(people):
@@ -682,6 +689,7 @@ def main(page: ft.Page):
     def people_images(people):
         global gerador
         global current_person
+        global flag
 
         progress.width = page.window_width
         progress.visible = True
@@ -694,8 +702,11 @@ def main(page: ft.Page):
             for i in range(100):
                 grid_images.controls.append(next(gerador))
                 page.update()
+            flag = True
         except Exception as e:
             print(f"Fim das imagens. Erro: {str(e)}")
+            flag = True
+
 
 # ----------------------------------------------------------------------------------------------------------------------------- ALTERANDO PASTA -------------
     def get_directory_result(e: ft.FilePickerResultEvent):
