@@ -7,7 +7,7 @@ import os
 import send2trash
 import re
 from PIL import Image
-# import time
+import time
 gerador = ''        
 
 
@@ -169,6 +169,7 @@ def redimensionar_thumb(img):
         imagem_cortada.save(img)
     except Exception as e:
         log.error(f'Erro ao redimensionar thumb de {str(img)}. Erro: {str(e)}')
+
 
 
 def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
