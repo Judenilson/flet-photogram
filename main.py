@@ -6,7 +6,8 @@ import zipfile
 import os
 import send2trash
 import re
-import time
+from PIL import Image
+# import time
 gerador = ''        
 
 
@@ -145,6 +146,31 @@ def restart_program():
     os.execl(python, python, *sys.argv)
 
 
+def redimensionar_thumb(img):
+    try: 
+        imagem = Image.open(img)
+        tamanho_quadrado = 180
+        # Obter as dimensões da imagem original
+        largura, altura = imagem.size
+        # Calcular a proporção para redimensionar a imagem
+        proporcao = tamanho_quadrado / min(largura, altura)
+        # Redimensionar a imagem mantendo a proporção
+        nova_largura = int(largura * proporcao)
+        nova_altura = int(altura * proporcao)
+        imagem_redimensionada = imagem.resize((nova_largura, nova_altura))
+        # Calcular as coordenadas para cortar a imagem centralizada
+        esquerda = (nova_largura - tamanho_quadrado) / 2
+        superior = (nova_altura - tamanho_quadrado) / 2
+        direita = (nova_largura + tamanho_quadrado) / 2
+        inferior = (nova_altura + tamanho_quadrado) / 2
+        # Cortar a imagem
+        imagem_cortada = imagem_redimensionada.crop((esquerda, superior, direita, inferior))
+        # Salvar a imagem redimensionada
+        imagem_cortada.save(img)
+    except Exception as e:
+        log.error(f'Erro ao redimensionar thumb de {str(img)}. Erro: {str(e)}')
+
+
 def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
     try:
         clip = VideoFileClip(caminho_video)
@@ -158,6 +184,7 @@ def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
         log.error(f'Erro ao salvar a miniatura do video {str(caminho_thumbnail)}. Erro: {str(e)}')
 
     clip.close()
+    redimensionar_thumb(caminho_thumbnail)
 
 
 def is_video(path):
@@ -306,7 +333,8 @@ def main(page: ft.Page):
     page.window_title_bar_hidden = True
 
     def thumbs_qt():
-        return round(((page.window_width * page.window_height) / 38416) + 5)
+        # return round(((page.window_width * page.window_height) / 38416) + 5)
+        return(30000)
 
     page.theme = ft.Theme(
         scrollbar_theme=ft.ScrollbarTheme(
