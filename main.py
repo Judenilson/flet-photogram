@@ -171,6 +171,41 @@ def redimensionar_thumb(img):
         log.error(f'Erro ao redimensionar thumb de {str(img)}. Erro: {str(e)}')
 
 
+def salvar_img_thumb(img, thumb):
+    try: 
+        imagem = Image.open(img)
+        tamanho_quadrado = 180
+        # Obter as dimensões da imagem original
+        largura, altura = imagem.size
+        # Calcular a proporção para redimensionar a imagem
+        proporcao = tamanho_quadrado / min(largura, altura)
+        # Redimensionar a imagem mantendo a proporção
+        nova_largura = int(largura * proporcao)
+        nova_altura = int(altura * proporcao)
+        imagem_redimensionada = imagem.resize((nova_largura, nova_altura))
+        # Calcular as coordenadas para cortar a imagem centralizada
+        esquerda = (nova_largura - tamanho_quadrado) / 2
+        superior = (nova_altura - tamanho_quadrado) / 2
+        direita = (nova_largura + tamanho_quadrado) / 2
+        inferior = (nova_altura + tamanho_quadrado) / 2
+        # Cortar a imagem
+        imagem_cortada = imagem_redimensionada.crop((esquerda, superior, direita, inferior))
+        # Salvar a imagem redimensionada
+        imagem_cortada.save(thumb)
+    except Exception as e:
+        log.error(f'Erro ao redimensionar thumb de imagem {str(img)}. Erro: {str(e)}')
+
+
+def update_img_thumb(img, thumb):
+    # Obter as datas de modificação
+    data_modificacao_imagem1 = os.path.getmtime(img)
+    data_modificacao_imagem2 = os.path.getmtime(thumb)
+    # Comparar as datas de modificação
+    if data_modificacao_imagem1 > data_modificacao_imagem2:
+        return True
+    else:
+        return False
+
 
 def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
     try:
@@ -202,6 +237,15 @@ def thumb_path(people, path):
     path_new = path[:people_position] + people + \
         '\\.thumbs.videos' + path[file_name:] + '.video.jpg'
     return path_new
+
+
+def thumb_img_path(people, path):
+    people_position = path.find(people)
+    file_name = path.rfind('\\')
+    path_new = path[:people_position] + people + \
+        '\\.thumbs.videos' + path[file_name:] + '.img.jpg'
+    return path_new
+
 
 def remove_special_characters(text):
     # Define a expressão regular para encontrar caracteres especiais
@@ -256,7 +300,18 @@ def start(percent, page):
                             img_list[file_key]=dir_file
 
                     else:
-                        img_list[file_key]=dir_file
+                        img_output_path = dir_thumbs + '\\' + file_name + '.img.jpg'
+                        try:                            
+                            if not os.path.isfile(img_output_path):
+                                salvar_img_thumb(dir_file, img_output_path)
+                            else:
+                                if update_img_thumb(dir_file, img_output_path):
+                                    salvar_img_thumb(dir_file, img_output_path)
+                        except Exception as e:
+                            log.error(
+                                f'Erro ao criar miniatrura de imagem. Erro: {str(e)}')
+                        else:
+                            img_list[file_key]=dir_file
 
 
                     percent.value = dir_file
@@ -333,9 +388,9 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.window_title_bar_hidden = True
 
-    def thumbs_qt():
-        # return round(((page.window_width * page.window_height) / 38416) + 5)
-        return(30000)
+    def thumbs_qt(people):
+        # return round(((page.window_width * page.window_height) / 38416) + 5)        
+        return(len(image_list[people]))
 
     page.theme = ft.Theme(
         scrollbar_theme=ft.ScrollbarTheme(
@@ -463,7 +518,7 @@ def main(page: ft.Page):
             cover_config_file[people] = thumb_path(people, img)
 
         else:
-            cover_config_file[people] = img
+            cover_config_file[people] = thumb_img_path(people, img)
 
         snack_bar_click('Capa modificada!', e)
 
@@ -575,17 +630,22 @@ def main(page: ft.Page):
                 snack_bar_click(
                     'Imagem da Capa, selecione outra antes de apagar!', e)
                 return False
+        else:
+            if cover_config_file[people] == thumb_img_path(people, img):
+                snack_bar_click(
+                    'Imagem da Capa, selecione outra antes de apagar!', e)
+                return False
 
-        if cover_config_file[people] == img:
-            snack_bar_click(
-                'Imagem da Capa, selecione outra antes de apagar!', e)
-            return False
+        # if cover_config_file[people] == img:
+        #     snack_bar_click(
+        #         'Imagem da Capa, selecione outra antes de apagar!', e)
+        #     return False
 
         if os.path.isfile(img):
             try:
                 send2trash.send2trash(img)
             except Exception as e:
-                log.error(f'Erro ao remover imagem {img}. Erro: {str(e)}')
+                log.error(f'Erro ao remover arquivo {img}. Erro: {str(e)}')
             else:
                 log.info(f'removendo arquivo {img}')
 
@@ -595,9 +655,18 @@ def main(page: ft.Page):
                     try:
                         send2trash.send2trash(isVideo)
                     except Exception as e:
-                        log.error(f'Erro ao remover video {isVideo}. Erro: {str(e)}')
+                        log.error(f'Erro ao remover video thumb {isVideo}. Erro: {str(e)}')
                     else:
-                        log.info(f'removendo thumb {isVideo}')
+                        log.info(f'removendo video thumb {isVideo}')
+            else:
+                notIsVideo = thumb_img_path(people, img)
+                if os.path.isfile(notIsVideo):
+                    try:
+                        send2trash.send2trash(notIsVideo)
+                    except Exception as e:
+                        log.error(f'Erro ao remover imagem thumb {notIsVideo}. Erro: {str(e)}')
+                    else:
+                        log.info(f'removendo imagem thumb {notIsVideo}')
 
             image_list[people][img_key] = 'DELETED'
 
@@ -632,7 +701,7 @@ def main(page: ft.Page):
         for imagens in image_list[people]:
             dir_photo = image_list[people][imagens]
             if dir_photo != 'DELETED':
-                dir_thumb = dir_photo
+                dir_thumb = thumb_img_path(people, dir_photo)
 
                 radius = 10
                 if is_video(dir_photo):
@@ -714,7 +783,7 @@ def main(page: ft.Page):
         child_aspect_ratio=1.0,
         spacing=10,
         run_spacing=10,
-        on_scroll=on_column_scroll,
+        # on_scroll=on_column_scroll,
         padding=ft.Padding(0,0,20,0),
     )
 
@@ -829,7 +898,7 @@ def main(page: ft.Page):
             grid_images.controls.clear()            
             current_person = page.route
             gerador = generate_images(current_person)
-            people_images(page.route, thumbs_qt())
+            people_images(page.route, thumbs_qt(current_person))
 
             page.views.append(
                 ft.View(
