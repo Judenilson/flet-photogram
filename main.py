@@ -3,6 +3,7 @@ import sys
 import json
 import logging
 import zipfile
+import subprocess
 import os
 import send2trash
 import re
@@ -207,19 +208,27 @@ def update_img_thumb(img, thumb):
         return False
 
 
+# def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
+#     try:
+#         clip = VideoFileClip(caminho_video)
+#     except Exception as e:
+#         log.error(f'Erro ao criar objeto VideoFileClip de {str(caminho_video)}. Erro: {str(e)}')
+
+#     try:
+#         # Salva o frame como uma imagem
+#         clip.save_frame(caminho_thumbnail, tempo)
+#     except Exception as e:
+#         log.error(f'Erro ao salvar a miniatura do video {str(caminho_thumbnail)}. Erro: {str(e)}')
+
+#     clip.close()
+#     redimensionar_thumb(caminho_thumbnail)
+
 def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
     try:
-        clip = VideoFileClip(caminho_video)
+        comando = ['ffmpeg', '-i', caminho_video, '-ss', tempo, '-vframes', '1', caminho_thumbnail]
+        subprocess.run(comando, creationflags=subprocess.CREATE_NO_WINDOW, check=True)
     except Exception as e:
-        log.error(f'Erro ao criar objeto VideoFileClip de {str(caminho_video)}. Erro: {str(e)}')
-
-    try:
-        # Salva o frame como uma imagem
-        clip.save_frame(caminho_thumbnail, tempo)
-    except Exception as e:
-        log.error(f'Erro ao salvar a miniatura do video {str(caminho_thumbnail)}. Erro: {str(e)}')
-
-    clip.close()
+        log.error(f'Erro ao criar objeto miniatura do video {str(caminho_video)}. Erro: {str(e)}')
     redimensionar_thumb(caminho_thumbnail)
 
 
