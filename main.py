@@ -853,7 +853,7 @@ def main(page: ft.Page):
             )
         )
 
-        # progress.visible = False
+        progress.visible = False
         page.update()
 
         if page.route in people_list:
@@ -862,6 +862,7 @@ def main(page: ft.Page):
             
             progress.width = page.window_width
             progress.visible = True
+            page.update()
             grid_images_new.controls.clear()            
             current_person = page.route
             generate_images_new(current_person)
