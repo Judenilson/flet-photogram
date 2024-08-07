@@ -8,9 +8,8 @@ import os
 import send2trash
 import re
 from PIL import Image
-import time
-gerador = ''        
 
+gerador = ''        
 
 version = 'v1.4'
 config_file = {'dir_path': '', 'width': 1280,
@@ -208,21 +207,6 @@ def update_img_thumb(img, thumb):
         return False
 
 
-# def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
-#     try:
-#         clip = VideoFileClip(caminho_video)
-#     except Exception as e:
-#         log.error(f'Erro ao criar objeto VideoFileClip de {str(caminho_video)}. Erro: {str(e)}')
-
-#     try:
-#         # Salva o frame como uma imagem
-#         clip.save_frame(caminho_thumbnail, tempo)
-#     except Exception as e:
-#         log.error(f'Erro ao salvar a miniatura do video {str(caminho_thumbnail)}. Erro: {str(e)}')
-
-#     clip.close()
-#     redimensionar_thumb(caminho_thumbnail)
-
 def criar_thumbnail(caminho_video, tempo, caminho_thumbnail):
     try:
         comando = ['ffmpeg', '-i', caminho_video, '-ss', tempo, '-vframes', '1', caminho_thumbnail]
@@ -395,29 +379,26 @@ def main(page: ft.Page):
     page.window_left = config_file['left']
     page.window_top = config_file['top']
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.window_title_bar_hidden = True
-
-    def thumbs_qt(people):
-        # return round(((page.window_width * page.window_height) / 38416) + 5)        
-        return(len(image_list[people]))
+    page.window_title_bar_hidden = True 
 
     page.theme = ft.Theme(
         scrollbar_theme=ft.ScrollbarTheme(
             track_color={
-                ft.MaterialState.HOVERED: '#33000000',
-                ft.MaterialState.DEFAULT: ft.colors.TRANSPARENT,
+                ft.MaterialState.HOVERED: '#FF202525',
+                ft.MaterialState.DEFAULT: '#FF152020',
             },
             track_visibility=True,
             track_border_color=ft.colors.TRANSPARENT,
             thumb_visibility=True,
             thumb_color={
-                ft.MaterialState.HOVERED: '#FFFFFFFF',
-                ft.MaterialState.DEFAULT: '#44FFFFFF',
+                ft.MaterialState.HOVERED: '#FF404545',
+                ft.MaterialState.DEFAULT: '#FF354040',
             },
-            thickness=10,
-            radius=100,
-            main_axis_margin=0,
+            thickness=16,
+            radius=6,
+            main_axis_margin=20,
             cross_axis_margin=0,
+            interactive=True
         )
     )
 
@@ -645,11 +626,6 @@ def main(page: ft.Page):
                     'Imagem da Capa, selecione outra antes de apagar!', e)
                 return False
 
-        # if cover_config_file[people] == img:
-        #     snack_bar_click(
-        #         'Imagem da Capa, selecione outra antes de apagar!', e)
-        #     return False
-
         if os.path.isfile(img):
             try:
                 send2trash.send2trash(img)
@@ -697,16 +673,25 @@ def main(page: ft.Page):
         return True
 
 
+    # def on_column_scroll(e: ft.OnScrollEvent):
+    #     global flag
 
-    def on_column_scroll(e: ft.OnScrollEvent):
-        global flag
-
-        if e.event_type == 'end' and e.pixels >= e.max_scroll_extent and flag:
-            flag = False
-            people_images(current_person, round(thumbs_qt()/3))        
+    #     if e.event_type == 'end' and e.pixels >= e.max_scroll_extent and flag:
+    #         flag = False
+    #         people_images(current_person, round(thumbs_qt()/3))        
 
 
-    def generate_images(people):
+    grid_images_new = ft.GridView(
+        expand=1,
+        runs_count=5,
+        max_extent=220,
+        child_aspect_ratio=1.0,
+        spacing=10,
+        run_spacing=10,
+        padding=ft.Padding(0,0,26,0),
+    )
+                
+    def generate_images_new(people):        
         for imagens in image_list[people]:
             dir_photo = image_list[people][imagens]
             if dir_photo != 'DELETED':
@@ -723,7 +708,8 @@ def main(page: ft.Page):
                 people_data['people'] = people
                 radius = radius
 
-                yield  ft.Container(
+                grid_images_new.controls.append(  
+                    ft.Container(
                         content=ft.Stack(
                             [
                                 ft.Image(
@@ -784,38 +770,7 @@ def main(page: ft.Page):
                         ),
                         key=dir_photo,
                     )
-
-    grid_images = ft.GridView(
-        expand=1,
-        runs_count=5,
-        max_extent=220,
-        child_aspect_ratio=1.0,
-        spacing=10,
-        run_spacing=10,
-        # on_scroll=on_column_scroll,
-        padding=ft.Padding(0,0,20,0),
-    )
-
-    def people_images(people, qtt_images):
-        global gerador
-        global current_person
-        global flag
-
-        progress.width = page.window_width
-        progress.visible = True
-        
-        if people != current_person:
-            current_person = people
-            gerador = generate_images(people)
-            
-        try:
-            for i in range(qtt_images):
-                grid_images.controls.append(next(gerador))
-                page.update()
-            flag = True
-        except Exception as e:
-            print(f"Fim das imagens. {str(e)}")
-            flag = True
+                )
 
 
 # ----------------------------------------------------------------------------------------------------------------------------- ALTERANDO PASTA -------------
@@ -898,27 +853,30 @@ def main(page: ft.Page):
             )
         )
 
-        progress.visible = False
+        # progress.visible = False
         page.update()
 
         if page.route in people_list:
 
             appbar_default.title.content.content.value += ' | ' + page.route
-            grid_images.controls.clear()            
+            
+            progress.width = page.window_width
+            progress.visible = True
+            grid_images_new.controls.clear()            
             current_person = page.route
-            gerador = generate_images(current_person)
-            people_images(page.route, thumbs_qt(current_person))
+            generate_images_new(current_person)
 
             page.views.append(
                 ft.View(
                     page.route,
                     [
-                        grid_images
+                        grid_images_new
                     ],
                     appbar=appbar_default,
                 )
             )
-
+            progress.visible = False
+            
         page.update()
 
     def view_pop(view):
