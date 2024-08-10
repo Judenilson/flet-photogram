@@ -9,9 +9,9 @@ import send2trash
 import re
 from PIL import Image
 
-gerador = ''        
+generator = ''        
 
-version = 'v1.4'
+version = 'v1.5.0'
 config_file = {'dir_path': '', 'width': 1280,
                'height': 800, 'top': 0, 'left': 0}
 cover_config_file = dict()
@@ -24,6 +24,10 @@ people_data = {'dir_thumb':'', 'dir_photo':'', 'radius':'', 'people':'', 'imagen
 current_person = ''
 config_locate = os.path.join(os.path.expanduser('~'), 'photogram_configs.cfg')
 flag = True
+
+qtd_images = 0
+qtd_images_loaded = 0
+qtd_step_loading = 1000
 
 # ----------------------- SISTEMA DE LOG ---------------------------------------------
 # Cria um logger
@@ -338,7 +342,7 @@ def config_screen(page: ft.page):
 
         save_config()
         loading_ok = True
-        page.window_destroy()
+        page.window.destroy()
         restart_program()
 
     get_directory_dialog = ft.FilePicker(on_result=get_directory_result)
@@ -368,65 +372,66 @@ def config_screen(page: ft.page):
     page.add(layout)
     page.update()
 
+
 # ----------------------------------------------------------------------------------------------------------------------------- MAIN SCREEN -------------
 
 
 def main(page: ft.Page):
-    global gerador
+    global generator    
     page.title = 'Photogram ' + version
-    page.window_width = config_file['width']
-    page.window_height = config_file['height']
-    page.window_left = config_file['left']
-    page.window_top = config_file['top']
+    page.window.width = config_file['width']
+    page.window.height = config_file['height']
+    page.window.left = config_file['left']
+    page.window.top = config_file['top']
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.window_title_bar_hidden = True 
+    page.window.title_bar_hidden = True 
 
     page.theme = ft.Theme(
         scrollbar_theme=ft.ScrollbarTheme(
             track_color={
-                ft.MaterialState.HOVERED: '#FF202525',
-                ft.MaterialState.DEFAULT: '#FF152020',
+                ft.ControlState.HOVERED: '#FF202525',
+                ft.ControlState.DEFAULT: '#FF152020',
             },
             track_visibility=True,
             track_border_color=ft.colors.TRANSPARENT,
             thumb_visibility=True,
             thumb_color={
-                ft.MaterialState.HOVERED: '#FF404545',
-                ft.MaterialState.DEFAULT: '#FF354040',
+                ft.ControlState.HOVERED: '#FF404545',
+                ft.ControlState.DEFAULT: '#FF354040',
             },
             thickness=16,
             radius=6,
-            main_axis_margin=20,
+            main_axis_margin=0,
             cross_axis_margin=0,
             interactive=True
         )
     )
 
-    progress = ft.ProgressBar(width=page.window_width, color=ft.colors.GREEN)
+    progress = ft.ProgressBar(width=page.window.width, color=ft.colors.GREEN)
     texto = ft.Text("Carregando Miniaturas ...")
     percent = ft.Text("")
 
     def close_app(e):
         ''' Fecha o Aplicativo '''
         global config_file
-        config_file['width'] = page.window_width
-        config_file['height'] = page.window_height
-        config_file['left'] = page.window_left
-        config_file['top'] = page.window_top
+        config_file['width'] = page.window.width
+        config_file['height'] = page.window.height
+        config_file['left'] = page.window.left
+        config_file['top'] = page.window.top
         save_config()
         save_thumb_config()
         page.views.clear()
-        page.window_destroy()
+        page.window.destroy()
         sys.exit()
 
     def minimize_app(e):
         ''' Minimiza o Aplicativo '''
-        page.window_minimized = True
+        page.window.minimized = True
         page.update()
 
     def maximize_app(e):
         ''' Maximiza o Aplicativo '''
-        page.window_maximized = not page.window_maximized
+        page.window.maximized = not page.window.maximized
         page.update()
 
     appbar_default = ft.AppBar(
@@ -445,17 +450,17 @@ def main(page: ft.Page):
         actions=[
             ft.Container(
                 content=ft.IconButton(
-                    icon=ft.icons.MINIMIZE, tooltip="Minimizar", on_click=minimize_app, icon_size=18, icon_color=ft.colors.WHITE, style=ft.ButtonStyle(bgcolor={ft.MaterialState.HOVERED: ft.colors.WHITE12}, shape={ft.MaterialState.HOVERED: ft.RoundedRectangleBorder(radius=0)})),
+                    icon=ft.icons.MINIMIZE, tooltip="Minimizar", on_click=minimize_app, icon_size=18, icon_color=ft.colors.WHITE, style=ft.ButtonStyle(bgcolor={ft.ControlState.HOVERED: ft.colors.WHITE12}, shape={ft.ControlState.HOVERED: ft.RoundedRectangleBorder(radius=0)})),
                 alignment=ft.alignment.center_right,
             ),
             ft.Container(
                 content=ft.IconButton(
-                    icon=ft.icons.CROP_SQUARE_ROUNDED, tooltip="Maximizar", on_click=maximize_app, icon_size=18, icon_color=ft.colors.WHITE, style=ft.ButtonStyle(bgcolor={ft.MaterialState.HOVERED: ft.colors.WHITE12}, shape={ft.MaterialState.HOVERED: ft.RoundedRectangleBorder(radius=0)})),
+                    icon=ft.icons.CROP_SQUARE_ROUNDED, tooltip="Maximizar", on_click=maximize_app, icon_size=18, icon_color=ft.colors.WHITE, style=ft.ButtonStyle(bgcolor={ft.ControlState.HOVERED: ft.colors.WHITE12}, shape={ft.ControlState.HOVERED: ft.RoundedRectangleBorder(radius=0)})),
                 alignment=ft.alignment.center_right,
             ),
             ft.Container(
                 content=ft.IconButton(
-                    icon=ft.icons.CLOSE, tooltip="Fechar APP", on_click=close_app, icon_size=18, icon_color=ft.colors.WHITE, style=ft.ButtonStyle(bgcolor={ft.MaterialState.HOVERED: ft.colors.RED}, shape={ft.MaterialState.HOVERED: ft.RoundedRectangleBorder(radius=0)})),
+                    icon=ft.icons.CLOSE, tooltip="Fechar APP", on_click=close_app, icon_size=18, icon_color=ft.colors.WHITE, style=ft.ButtonStyle(bgcolor={ft.ControlState.HOVERED: ft.colors.RED}, shape={ft.ControlState.HOVERED: ft.RoundedRectangleBorder(radius=0)})),
                 alignment=ft.alignment.center_right,
             )
         ],
@@ -691,86 +696,107 @@ def main(page: ft.Page):
         padding=ft.Padding(0,0,26,0),
     )
                 
-    def generate_images_new(people):        
+
+    def generate_images_new(people):
+        global qtd_images
+        global qtd_images_loaded
+
+        images_people_total = len(image_list[people])
+        count = 0
         for imagens in image_list[people]:
-            dir_photo = image_list[people][imagens]
-            if dir_photo != 'DELETED':
-                dir_thumb = thumb_img_path(people, dir_photo)
+            count += 1
+            if count > images_people_total:
+                qtd_images = 0
+                qtd_images_loaded = 0
+                return
+            
+            if count > qtd_images:
+                qtd_images += 1
+                dir_photo = image_list[people][imagens]
+                if dir_photo != 'DELETED':
+                    dir_thumb = thumb_img_path(people, dir_photo)
 
-                radius = 10
-                if is_video(dir_photo):
-                    radius = 100
-                    dir_thumb = thumb_path(people, dir_photo)
+                    radius = 10
+                    if is_video(dir_photo):
+                        radius = 100
+                        dir_thumb = thumb_path(people, dir_photo)
 
-                people_data['dir_photo'] = dir_photo
-                dir_thumb = dir_thumb
-                imagens = imagens
-                people_data['people'] = people
-                radius = radius
+                    people_data['dir_photo'] = dir_photo
+                    dir_thumb = dir_thumb
+                    imagens = imagens
+                    people_data['people'] = people
+                    radius = radius
 
-                grid_images_new.controls.append(  
-                    ft.Container(
-                        content=ft.Stack(
-                            [
-                                ft.Image(
-                                    src=dir_thumb,
-                                    fit=ft.ImageFit.COVER,
-                                    repeat=ft.ImageRepeat.NO_REPEAT,
-                                    border_radius=ft.border_radius.all(radius),
-                                    width=220,
-                                    height=220,
-                                ),
-                                ft.Container(
-                                    content=ft.IconButton(
-                                        icon=ft.icons.OPEN_IN_FULL,
-                                        data={'img_dir': dir_photo,
-                                            'people': people},
-                                        on_click=open_imagem,
-                                        width=40,
-                                        style=ft.ButtonStyle(
-                                            color=ft.colors.TRANSPARENT,
-                                            shape=ft.RoundedRectangleBorder(
-                                                radius=10),
+                    if qtd_images <= (qtd_images_loaded + qtd_step_loading):
+                        grid_images_new.controls.append(  
+                            ft.Container(
+                                content=ft.Stack(
+                                    [
+                                        ft.Image(
+                                            src=dir_thumb,
+                                            fit=ft.ImageFit.COVER,
+                                            repeat=ft.ImageRepeat.NO_REPEAT,
+                                            border_radius=ft.border_radius.all(radius),
+                                            width=220,
+                                            height=220,
                                         ),
-                                    ),
-                                    width=220,
-                                    height=220,
-                                    data={'img_dir': dir_photo, 'people': people},
-                                    on_long_press=change_cover_image
-                                ),
-                                ft.Container(
-                                    content= ft.Text(imagens[:8], size=10, height=ft.FontWeight.BOLD),
-                                    bottom=5,
-                                    left=15,
-                                ),
-                                ft.Container(
-                                    content=ft.IconButton(
-                                        icon=ft.icons.DELETE_FOREVER_SHARP,
-                                        on_click=del_imagem,
-                                        data=[people, dir_photo, imagens],
-                                        width=40,
-                                        style=ft.ButtonStyle(
-                                            color={
-                                                ft.MaterialState.DEFAULT: ft.colors.WHITE,
-                                                ft.MaterialState.HOVERED: ft.colors.RED,
-                                            },
-                                            bgcolor={
-                                                ft.MaterialState.HOVERED: ft.colors.WHITE},
-                                            shape=ft.RoundedRectangleBorder(
-                                                radius=100),
+                                        ft.Container(
+                                            content=ft.IconButton(
+                                                icon=ft.icons.OPEN_IN_FULL,
+                                                data={'img_dir': dir_photo,
+                                                    'people': people},
+                                                on_click=open_imagem,
+                                                width=40,
+                                                style=ft.ButtonStyle(
+                                                    color=ft.colors.TRANSPARENT,
+                                                    shape=ft.RoundedRectangleBorder(
+                                                        radius=10),
+                                                ),
+                                            ),
+                                            width=220,
+                                            height=220,
+                                            data={'img_dir': dir_photo, 'people': people},
+                                            on_long_press=change_cover_image
                                         ),
-                                    ),
-                                    bottom=5,
-                                    right=5,
-                                    width=40,
-                                    height=40,
-                                    visible=True,
+                                        ft.Container(
+                                            content= ft.Text(imagens[:8], size=10, height=ft.FontWeight.BOLD),
+                                            bottom=5,
+                                            left=15,
+                                        ),
+                                        ft.Container(
+                                            content=ft.IconButton(
+                                                icon=ft.icons.DELETE_FOREVER_SHARP,
+                                                on_click=del_imagem,
+                                                data=[people, dir_photo, imagens],
+                                                width=40,
+                                                style=ft.ButtonStyle(
+                                                    color={
+                                                        ft.ControlState.DEFAULT: ft.colors.WHITE,
+                                                        ft.ControlState.HOVERED: ft.colors.RED,
+                                                    },
+                                                    bgcolor={
+                                                        ft.ControlState.HOVERED: ft.colors.WHITE},
+                                                    shape=ft.RoundedRectangleBorder(
+                                                        radius=100),
+                                                ),
+                                            ),
+                                            bottom=5,
+                                            right=5,
+                                            width=40,
+                                            height=40,
+                                            visible=True,
+                                        ),
+                                    ],
                                 ),
-                            ],
-                        ),
-                        key=dir_photo,
-                    )
-                )
+                                key=dir_photo,
+                            )
+                        )
+                    else:
+                        qtd_images = qtd_images_loaded + qtd_step_loading
+                        qtd_images_loaded = qtd_images
+                        return             
+                # page.update()
+                       
 
 
 # ----------------------------------------------------------------------------------------------------------------------------- ALTERANDO PASTA -------------
@@ -784,7 +810,7 @@ def main(page: ft.Page):
 
         save_config()
 
-        page.window_destroy()
+        page.window.destroy()
         restart_program()
 
     get_directory_dialog = ft.FilePicker(on_result=get_directory_result)
@@ -819,7 +845,7 @@ def main(page: ft.Page):
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
-    def exit_page(e: ft.KeyboardEvent):
+    def exit_page(e: ft.KeyboardEvent):        
         if e.key == 'Escape' and len(page.views) > 1:
             page.views.clear()
             page.go('/')
@@ -833,12 +859,24 @@ def main(page: ft.Page):
     floatingButton = ft.FloatingActionButton(
         icon=ft.icons.FOLDER_OPEN_SHARP, on_click=loading_folder, bgcolor=ft.colors.BLACK
     )
+
+    def loading_images(person):
+        generate_images_new(person) 
+        page.update()
+
+    floatingMorePicsButton = ft.FloatingActionButton(
+        icon=ft.icons.ADD_CIRCLE_OUTLINE, on_click=lambda _: loading_images(current_person), bgcolor=ft.colors.BLACK
+    )
 # ----------------------------------------------------------------------------------------------------------------------------- ALTERANDO PASTA FIM -------------
 
     def layout(e):
-        global gerador
-        global current_person
+        global generator
+        global current_person          
+        global qtd_images
+        global qtd_images_loaded
 
+        qtd_images = 0
+        qtd_images_loaded = 0
         page.views.clear()
         appbar_default.title.content.content.value = 'Photogram ' + version
         page.views.append(
@@ -857,10 +895,10 @@ def main(page: ft.Page):
         page.update()
 
         if page.route in people_list:
-
+            global images_people_total
             appbar_default.title.content.content.value += ' | ' + page.route
             
-            progress.width = page.window_width
+            progress.width = page.window.width
             progress.visible = True
             page.update()
             grid_images_new.controls.clear()            
@@ -873,6 +911,7 @@ def main(page: ft.Page):
                     [
                         grid_images_new
                     ],
+                    floating_action_button=floatingMorePicsButton,
                     appbar=appbar_default,
                 )
             )
